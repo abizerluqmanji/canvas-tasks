@@ -1,4 +1,5 @@
 requests
 pytz
 google_auth_oauthlib
+click
 ni-python-styleguide
