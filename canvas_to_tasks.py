@@ -1,6 +1,7 @@
 """Script to fetch assignments from Canvas and create tasks in Google Tasks."""
 
 import json
+import pprint
 from datetime import datetime
 
 import click
@@ -12,7 +13,6 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 CANVAS_API_URL = "https://canvas.cmu.edu/api/v1"
 
 # Google Tasks API config
-CLIENT_FILE = r"path\to\client_secret.json"
 SCOPES = ["https://www.googleapis.com/auth/tasks"]
 
 
@@ -49,6 +49,9 @@ def parse_tasks(assignments):
     tasks = []
     for assignment in assignments:
         if assignment["plannable_type"] == "assignment" or assignment["plannable_type"] == "quiz":
+            # Ignore completed assignments
+            if assignment["submissions"]["submitted"]:
+                continue
             # Convert due date from UTC to ET
             utc_time = datetime.strptime(assignment["plannable"]["due_at"], "%Y-%m-%dT%H:%M:%SZ")
             utc_time = utc_time.replace(tzinfo=pytz.utc)
@@ -63,20 +66,25 @@ def parse_tasks(assignments):
     return tasks
 
 
-def google_authenticate():
-    """Authenticate with Google and return the token."""
-    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_FILE, SCOPES)
+def google_authenticate(client_file_path):
+    """Authenticate with Google and return the token.
+
+    Args:
+        client_file_path (str): Path to the client secret file.
+    """
+    flow = InstalledAppFlow.from_client_secrets_file(client_file_path, SCOPES)
     credentials = flow.run_local_server(port=0)
     return credentials.token
 
 
-def create_google_tasks(tasks):
+def create_google_tasks(tasks, client_file_path):
     """Create tasks in Google Tasks.
 
     Args:
         tasks (list): List of tasks to create in Google Tasks.
+        client_file_path (str): Path to the client secret file.
     """
-    token = google_authenticate()
+    token = google_authenticate(client_file_path)
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     for task in tasks:
         response = requests.post(
@@ -85,7 +93,8 @@ def create_google_tasks(tasks):
             data=json.dumps(task),
         )
         response.raise_for_status()
-        print("Task created successfully")
+        print("Task created for:")
+        pprint.pprint(task)
 
 
 @click.command()
@@ -111,7 +120,13 @@ def create_google_tasks(tasks):
     help="End date in the format YYYY-MM-DD",
 )
 @click.option("--create-tasks", "create_tasks", is_flag=True, help="Create tasks in Google Tasks")
-def cli(canvas_access_token, start_date, end_date, create_tasks):
+@click.option(
+    "--client-file-path",
+    "client_file_path",
+    type=str,
+    help="Path to the client secret file",
+)
+def cli(canvas_access_token, start_date, end_date, create_tasks, client_file_path):
     """Fetch assignments from Canvas and create tasks in Google Tasks.
 
     Args:
@@ -119,12 +134,13 @@ def cli(canvas_access_token, start_date, end_date, create_tasks):
         start_date (str): Start date in the format YYYY-MM-DD.
         end_date (str): End date in the format YYYY-MM-DD.
         create_tasks (bool): Create tasks in Google Tasks.
+        client_file_path (str): Path to the client secret file.
     """
     assignments = get_assignments(canvas_access_token, start_date, end_date)
     tasks = parse_tasks(assignments)
-    print(tasks)
+    pprint.pprint(tasks)
     if create_tasks:
-        create_google_tasks(tasks)
+        create_google_tasks(tasks, client_file_path)
 
 
 if __name__ == "__main__":
