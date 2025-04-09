@@ -1,6 +1,7 @@
 """Script to fetch assignments from Canvas and create tasks in Google Tasks."""
 
 import json
+import logging
 import pprint
 from datetime import datetime
 
@@ -14,6 +15,10 @@ CANVAS_API_URL = "https://canvas.cmu.edu/api/v1"
 
 # Google Tasks API config
 SCOPES = ["https://www.googleapis.com/auth/tasks"]
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def get_assignments(canvas_access_token, start_date, end_date):
@@ -93,8 +98,7 @@ def create_google_tasks(tasks, client_file_path):
             data=json.dumps(task),
         )
         response.raise_for_status()
-        print("Task created for:")
-        pprint.pprint(task)
+        logger.info("Task created successfully for: %s", task["title"])
 
 
 @click.command()
@@ -103,6 +107,7 @@ def create_google_tasks(tasks, client_file_path):
     "canvas_access_token",
     envvar="CANVAS_ACCESS_TOKEN",
     type=str,
+    required=True,
     help="Canvas access token",
 )
 @click.option(
@@ -138,8 +143,10 @@ def cli(canvas_access_token, start_date, end_date, create_tasks, client_file_pat
     """
     assignments = get_assignments(canvas_access_token, start_date, end_date)
     tasks = parse_tasks(assignments)
-    pprint.pprint(tasks)
+    logger.info("Parsed tasks: %s", pprint.pformat(tasks))
     if create_tasks:
+        if not client_file_path:
+            raise ValueError("Client file path is required to create tasks.")
         create_google_tasks(tasks, client_file_path)
 
 
