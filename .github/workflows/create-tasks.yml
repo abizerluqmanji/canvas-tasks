@@ -1,5 +1,7 @@
 name: Create Google tasks
 
+run-name: Create Google tasks from ${{ inputs.start_date }} to ${{ inputs.end_date }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -11,9 +13,14 @@ on:
         description: 'End date in the format YYYY-MM-DD'
         required: true
         type: string
+      create_tasks:
+        description: 'Create Google tasks from Canvas assignments'
+        required: true
+        type: boolean
 
 jobs:
-  run-script:
+  create-google-tasks:
+    name: Create Google tasks
     runs-on: ubuntu-latest
 
     steps:
