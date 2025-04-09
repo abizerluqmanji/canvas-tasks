@@ -128,6 +128,7 @@ def create_google_tasks(tasks, client_file_path):
 @click.option(
     "--client-file-path",
     "client_file_path",
+    envvar="CLIENT_SECRET_FILE_PATH",
     type=str,
     help="Path to the client secret file",
 )
