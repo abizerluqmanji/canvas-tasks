@@ -3,16 +3,37 @@ name: Create Google tasks
 on:
   workflow_dispatch:
     inputs:
-      name:
-        description: 'Person to greet'
-        default: 'World'
+      start_date:
+        description: 'Start date in the format YYYY-MM-DD'
+        required: true
+        type: string
+      end_date:
+        description: 'End date in the format YYYY-MM-DD'
         required: true
         type: string
 
 jobs:
-  greet:
+  run-script:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Send greeting
-      run: echo "Hello ${{ inputs.name }}"
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+
+    - name: Run script
+      env:
+        CANVAS_ACCESS_TOKEN: ${{ secrets.CANVAS_ACCESS_TOKEN }}
+      run: |
+        source venv/bin/activate
+        python canvas_to_tasks.py --start-date "${{ inputs.start_date }}" --end-date "${{ inputs.end_date }}"
