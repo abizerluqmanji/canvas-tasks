@@ -78,7 +78,7 @@ def google_authenticate(client_file_path):
         client_file_path (str): Path to the client secret file.
     """
     flow = InstalledAppFlow.from_client_secrets_file(client_file_path, SCOPES)
-    credentials = flow.run_local_server(port=0)
+    credentials = flow.run_local_server(port=0, open_browser=False, timeout_seconds=60)
     return credentials.token
 
 
