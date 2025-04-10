@@ -9,14 +9,17 @@ on:
         description: 'Start date in the format YYYY-MM-DD'
         required: true
         type: string
+        default: '2025-04-01'
       end_date:
         description: 'End date in the format YYYY-MM-DD'
         required: true
         type: string
+        default: '2025-04-01'
       create_tasks:
         description: 'Create tasks'
         required: true
         type: boolean
+        default: false
 
 jobs:
   create-google-tasks:
@@ -47,7 +50,9 @@ jobs:
     - name: Run script
       env:
         CANVAS_ACCESS_TOKEN: ${{ secrets.CANVAS_ACCESS_TOKEN }}
-        CLIENT_SECRET_FILE_PATH: client_secret.json
+        GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+        GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
       run: |
         source venv/bin/activate
         python canvas_to_tasks.py --start-date "${{ inputs.start_date }}" --end-date "${{ inputs.end_date }}" $([[ "${{ inputs.create_tasks }}" == "true" ]] && echo "--create-tasks")
