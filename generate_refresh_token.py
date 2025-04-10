@@ -1,3 +1,5 @@
+"""Script to generate a refresh token for Google Tasks API."""
+
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 SCOPES = ["https://www.googleapis.com/auth/tasks"]

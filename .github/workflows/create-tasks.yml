@@ -19,7 +19,7 @@ on:
         description: 'Create tasks'
         required: true
         type: boolean
-        default: false
+        default: true
 
 jobs:
   create-google-tasks:
