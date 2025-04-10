@@ -8,7 +8,8 @@ from datetime import datetime
 import click
 import pytz
 import requests
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 
 # Canvas API config
 CANVAS_API_URL = "https://canvas.cmu.edu/api/v1"
@@ -71,27 +72,35 @@ def parse_tasks(assignments):
     return tasks
 
 
-def google_authenticate(client_file_path):
-    """Authenticate with Google and return the token.
+def google_authenticate_with_refresh_token(client_id, client_secret, refresh_token):
+    """Authenticate with Google using a refresh token.
 
     Args:
-        client_file_path (str): Path to the client secret file.
+        client_id (str): Google OAuth client ID.
+        client_secret (str): Google OAuth client secret.
+        refresh_token (str): Refresh token for Google OAuth.
     """
-    flow = InstalledAppFlow.from_client_secrets_file(client_file_path, SCOPES)
-    auth_url, _ = flow.authorization_url(prompt='consent')
-    logger.info("Please visit this URL to authorize this application: %s", auth_url)
-    credentials = flow.run_local_server(port=0, open_browser=False, timeout_seconds=60)
+    credentials = Credentials(
+        None,
+        refresh_token=refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=client_id,
+        client_secret=client_secret,
+    )
+    credentials.refresh(Request())
     return credentials.token
 
 
-def create_google_tasks(tasks, client_file_path):
+def create_google_tasks(tasks, client_id, client_secret, refresh_token):
     """Create tasks in Google Tasks.
 
     Args:
         tasks (list): List of tasks to create in Google Tasks.
-        client_file_path (str): Path to the client secret file.
+        client_id (str): Google OAuth client ID.
+        client_secret (str): Google OAuth client secret.
+        refresh_token (str): Refresh token for Google OAuth.
     """
-    token = google_authenticate(client_file_path)
+    token = google_authenticate_with_refresh_token(client_id, client_secret, refresh_token)
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     for task in tasks:
         response = requests.post(
@@ -128,13 +137,29 @@ def create_google_tasks(tasks, client_file_path):
 )
 @click.option("--create-tasks", "create_tasks", is_flag=True, help="Create tasks in Google Tasks")
 @click.option(
-    "--client-file-path",
-    "client_file_path",
-    envvar="CLIENT_SECRET_FILE_PATH",
+    "--client-id",
+    "client_id",
+    envvar="GOOGLE_CLIENT_ID",
     type=str,
-    help="Path to the client secret file",
+    help="Google OAuth client ID",
 )
-def cli(canvas_access_token, start_date, end_date, create_tasks, client_file_path):
+@click.option(
+    "--client-secret",
+    "client_secret",
+    envvar="GOOGLE_CLIENT_SECRET",
+    type=str,
+    help="Google OAuth client secret",
+)
+@click.option(
+    "--refresh-token",
+    "refresh_token",
+    envvar="GOOGLE_REFRESH_TOKEN",
+    type=str,
+    help="Google OAuth refresh token",
+)
+def cli(
+    canvas_access_token, start_date, end_date, create_tasks, client_id, client_secret, refresh_token
+):
     """Fetch assignments from Canvas and create tasks in Google Tasks.
 
     Args:
@@ -142,15 +167,15 @@ def cli(canvas_access_token, start_date, end_date, create_tasks, client_file_pat
         start_date (str): Start date in the format YYYY-MM-DD.
         end_date (str): End date in the format YYYY-MM-DD.
         create_tasks (bool): Create tasks in Google Tasks.
-        client_file_path (str): Path to the client secret file.
+        client_id (str): Google OAuth client ID.
+        client_secret (str): Google OAuth client secret.
+        refresh_token (str): Google OAuth refresh token.
     """
     assignments = get_assignments(canvas_access_token, start_date, end_date)
     tasks = parse_tasks(assignments)
     logger.info("Parsed tasks: %s", pprint.pformat(tasks))
     if create_tasks:
-        if not client_file_path:
-            raise ValueError("Client file path is required to create tasks.")
-        create_google_tasks(tasks, client_file_path)
+        create_google_tasks(tasks, client_id, client_secret, refresh_token)
 
 
 if __name__ == "__main__":
